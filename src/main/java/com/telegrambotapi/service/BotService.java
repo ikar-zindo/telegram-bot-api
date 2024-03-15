@@ -11,6 +11,8 @@ import com.telegrambotapi.domain.User;
 import com.telegrambotapi.exception.UserException;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
@@ -36,6 +38,10 @@ public class BotService extends TelegramLongPollingBot {
 
    public final BotConfig config;
 
+   public static ChatGPTService chatGPTService;
+
+   public static Environment environment;
+
    static final String YES_BUTTON = "YES_BUTTON";
    static final String NO_BUTTON = "NO_BUTTON";
    static final String ERROR_TEXT = "Error occurred: ";
@@ -49,6 +55,7 @@ public class BotService extends TelegramLongPollingBot {
 
    public BotService(BotConfig config) {
       this.config = config;
+
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "get a welcome message"));
       listOfCommands.add(new BotCommand("/help", "help how to use bot"));
@@ -70,65 +77,117 @@ public class BotService extends TelegramLongPollingBot {
       return config.getToken();
    }
 
+   @Autowired
+   public void setService(ChatGPTService service) {
+      chatGPTService = service;
+   }
+   @Autowired
+   public void setEnv(Environment environment) {
+      BotService.environment = environment;
+   }
+
    private String expectedName = null;
    private String expectedBirthday = null;
 
    @Override
    public void onUpdateReceived(Update update) {
-      if (update.hasMessage() && update.getMessage().hasText()) {
-         Long chatId = update.getMessage().getChatId();
-         String messageText = update.getMessage().getText();
+      SendMessage sendMessage = new SendMessage();
+      String text = update.getMessage().getText();
+      String chatId = String.valueOf(update.getMessage().getChatId());
 
-         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
-         try {
-            createUser(update.getMessage());
-            String username = getUsername(update.getMessage());
-            String userBirthday = getUserBirthday(update.getMessage());
+      pong(sendMessage, chatId, text);
 
-            if (messageText.equals("/start") && username == null) {
-               sendMessage(chatId, "Как я могу к вам обращаться:");
-               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
+      askGpt(sendMessage, chatId, text);
 
-            } else if (messageText != null && expectedName != null) {
-               username = messageText;
-               String name = messageText.trim();
-               updateUserName(chatId, username);
 
-               sendMessage(chatId, "Ваша дата рождения:\n" +
-                       "DD/MM/YYYY");
+//      if (update.hasMessage() && update.getMessage().hasText()) {
+//         Long chatId = update.getMessage().getChatId();
+//         String messageText = update.getMessage().getText();
+//
+//         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
+//         try {
+//            createUser(update.getMessage());
+//            String username = getUsername(update.getMessage());
+//            String userBirthday = getUserBirthday(update.getMessage());
+//
+//            if (messageText.equals("/start") && username == null) {
+//               sendMessage(chatId, "Как я могу к вам обращаться:");
+//               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
+//
+//            } else if (messageText != null && expectedName != null) {
+//               username = messageText;
+//               String name = messageText.trim();
+//               updateUserName(chatId, username);
+//
+//               sendMessage(chatId, "Ваша дата рождения:\n" +
+//                       "DD/MM/YYYY");
+//
+//               expectedBirthday = name;
+//               expectedName = null;
+//
+//            } else if (expectedBirthday != null && userBirthday == null) {
+//               String birthday = messageText.trim();
+//
+//               if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
+//                  updateBirthday(update, birthday);
+//
+//                  expectedBirthday = null;
+//                  sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
+//                  startCommandReceived(chatId, username);
+//
+//               } else {
+//                  sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
+//                          "YYYY-MM-DD.");
+//               }
+//               // =====   CASES   ======================================================================================
+//            } else {
+//               switch (messageText) {
+//                  case "/start" -> {
+//                     startCommandReceived(chatId, username);
+//                     register(chatId);
+//                  }
+//
+//                  case "/help" -> prepareAndSendMessage(chatId, HELP_TEXT);
+//
+//                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
+//               }
+//            }
+//         } catch (ExecutionException | InterruptedException ignored) {
+//         }
+//      }
+   }
 
-               expectedBirthday = name;
-               expectedName = null;
+   /**
+    * Sends your request to chatGPT using #ChatGPTService.askChatGPT
+    * @param sendMessage
+    * @param chatId
+    * @param text
+    */
+   private void askGpt(SendMessage sendMessage, String chatId, String text) {
 
-            } else if (expectedBirthday != null && userBirthday == null) {
-               String birthday = messageText.trim();
+      String gptResponse = chatGPTService.askChatGPTText(text);
+      try {
+         sendMessage.setChatId(chatId);
+         sendMessage.setText("GPT answers: " + gptResponse);
+         execute(sendMessage);
+      } catch (TelegramApiException e) {
+         throw new RuntimeException(e);
+      }
+   }
 
-               if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
-                  updateBirthday(update, birthday);
-
-                  expectedBirthday = null;
-                  sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
-                  startCommandReceived(chatId, username);
-
-               } else {
-                  sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
-                          "YYYY-MM-DD.");
-               }
-               // =====   CASES   ======================================================================================
-            } else {
-               switch (messageText) {
-                  case "/start" -> {
-                     startCommandReceived(chatId, username);
-                     register(chatId);
-                  }
-
-                  case "/help" -> prepareAndSendMessage(chatId, HELP_TEXT);
-
-                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
-               }
-            }
-         } catch (ExecutionException | InterruptedException ignored) {
-         }
+   /**
+    * Gives a feedback about what you are requesting to chatGPT
+    * @param sendMessage
+    * @param chatId
+    * @param text
+    */
+   private void pong(SendMessage sendMessage, String chatId, String text) {
+      sendMessage.setText("Hello! I'm sending this message to chatGPT: " + text);
+      try {
+         sendMessage.setChatId(chatId);
+         execute(sendMessage);
+      } catch (TelegramApiException e) {
+         e.printStackTrace();
       }
    }
 
@@ -295,11 +354,11 @@ public class BotService extends TelegramLongPollingBot {
       List<InlineKeyboardButton> rowInline = new ArrayList<>();
 
       var yesButton = new InlineKeyboardButton();
-      yesButton.setText("Yes");
+      yesButton.setText("Да!");
       yesButton.setCallbackData(YES_BUTTON);
 
       var noButton = new InlineKeyboardButton();
-      noButton.setText("No");
+      noButton.setText("Нет!");
       noButton.setCallbackData(NO_BUTTON);
 
       rowInline.add(yesButton);
