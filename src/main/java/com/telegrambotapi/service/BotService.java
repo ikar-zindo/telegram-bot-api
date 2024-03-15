@@ -83,6 +83,7 @@ public class BotService extends TelegramLongPollingBot {
          Long chatId = update.getMessage().getChatId();
          String messageText = update.getMessage().getText();
 
+         // 1ST ENTRY - INITIALIZATION USER
          try {
             createUser(update.getMessage());
             String username = getUsername(update.getMessage());
@@ -117,6 +118,24 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
                           "YYYY-MM-DD.");
                }
+               // ======================================================================================================
+            } else {
+               switch (messageText) {
+                  case "/start" -> {
+                     startCommandReceived(chatId, username);
+                  }
+
+//                  case "" -> {
+//
+//                  }
+
+                  default -> {
+                     startCommandReceived(chatId, username);
+                  }
+               }
+
+
+
             }
          } catch (ExecutionException | InterruptedException ignored) {
          }
@@ -125,7 +144,7 @@ public class BotService extends TelegramLongPollingBot {
 
    // START
    private void startCommandReceived(Long chatId, String name) {
-      String answer = EmojiParser.parseToUnicode(String.format("Hi, %s, nice to meet you!, \uD83D\uDE0A", name));
+      String answer = EmojiParser.parseToUnicode(String.format("Здравствуй, %s, Приятно познакомится!, \uD83D\uDE0A", name));
 
       sendMessage(chatId, answer);
       log.info("Replied to user " + name);
