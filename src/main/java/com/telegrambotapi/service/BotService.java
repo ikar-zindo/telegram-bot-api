@@ -209,7 +209,7 @@ public class BotService extends TelegramLongPollingBot {
          return Objects.requireNonNull(documentReference.get().get().toObject(User.class)).getUserBirthday();
 
       } else {
-         throw new UserException("");
+         throw new UserException("Message is null!");
       }
    }
 
@@ -311,7 +311,7 @@ public class BotService extends TelegramLongPollingBot {
       try {
          execute(message);
       } catch (TelegramApiException e) {
-         log.error("Error occurred: " + e.getMessage());
+         log.error(ERROR_TEXT + e.getMessage());
       }
    }
 
