@@ -79,7 +79,7 @@ public class BotService extends TelegramLongPollingBot {
          Long chatId = update.getMessage().getChatId();
          String messageText = update.getMessage().getText();
 
-         // 1ST ENTRY - INITIALIZATION USER
+         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
          try {
             createUser(update.getMessage());
             String username = getUsername(update.getMessage());
@@ -114,10 +114,13 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
                           "YYYY-MM-DD.");
                }
-               // ======================================================================================================
+               // =====   CASES   ======================================================================================
             } else {
                switch (messageText) {
-                  case "/start" -> startCommandReceived(chatId, username);
+                  case "/start" -> {
+                     startCommandReceived(chatId, username);
+                     register(chatId);
+                  }
 
                   case "/help" -> prepareAndSendMessage(chatId, HELP_TEXT);
 
@@ -189,10 +192,10 @@ public class BotService extends TelegramLongPollingBot {
             return username;
 
          } else {
-            throw new UserException("");
+            throw new UserException("User not found!");
          }
       } else {
-         throw new UserException("");
+         throw new UserException("Message is empty!");
       }
    }
 
@@ -281,12 +284,11 @@ public class BotService extends TelegramLongPollingBot {
    // ============   EXPERIMENTS   ================================
 
    // REGISTRATION QUESTION
-   private void register(Long chatId, String username) {
+   private void register(Long chatId) {
 
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
-      message.setText(String.format(
-              "Do you really want to register with name %s?", username));
+      message.setText("Хотите пообщаться с ChatGPT");
 
       InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
       List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
