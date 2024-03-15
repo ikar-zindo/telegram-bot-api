@@ -51,10 +51,6 @@ public class BotService extends TelegramLongPollingBot {
       this.config = config;
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "get a welcome message"));
-      listOfCommands.add(new BotCommand("/editbirthday", "edit your birthday"));
-      listOfCommands.add(new BotCommand("/showbirthday", "get your birthday"));
-      listOfCommands.add(new BotCommand("/deletebirthday", "delete your birthday"));
-      listOfCommands.add(new BotCommand("/register", "do you want registration?"));
       listOfCommands.add(new BotCommand("/help", "help how to use bot"));
 
       try {
@@ -121,21 +117,12 @@ public class BotService extends TelegramLongPollingBot {
                // ======================================================================================================
             } else {
                switch (messageText) {
-                  case "/start" -> {
-                     startCommandReceived(chatId, username);
-                  }
+                  case "/start" -> startCommandReceived(chatId, username);
 
-//                  case "" -> {
-//
-//                  }
+                  case "/help" -> prepareAndSendMessage(chatId, HELP_TEXT);
 
-                  default -> {
-                     startCommandReceived(chatId, username);
-                  }
+                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
                }
-
-
-
             }
          } catch (ExecutionException | InterruptedException ignored) {
          }
@@ -183,7 +170,7 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-   // GET USERNAME
+   // GET - USERNAME
    public String getUsername(Message message) throws ExecutionException, InterruptedException {
       if (message != null) {
          Firestore dbFirestore = FirestoreClient.getFirestore();
@@ -209,7 +196,7 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-   // GET USER BIRTHDAY
+   // GET - USER BIRTHDAY
    public String getUserBirthday(Message message) throws ExecutionException, InterruptedException {
       if (message != null) {
          Firestore dbFirestore = FirestoreClient.getFirestore();
@@ -245,69 +232,53 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-   // ============   EXPERIMENTS   ================================
-   public void onUpdateReceived_OLD(Update update) {
-
-      if (update.hasMessage() && update.getMessage().hasText()) {
-         String username = update.getMessage().getChat().getUserName();
-         Message message = update.getMessage();
-         String messageText = update.getMessage().getText();
-         Long chatId = update.getMessage().getChatId();
-
-         try {
-            String name = getUsername(message);
-            String birthday = getUserBirthday(message);
-
-         } catch (ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
-         }
-
-         switch (messageText) {
-            case "/start" -> {
-
-               try { // initialize user
-                  createUser(message);
-
-               } catch (ExecutionException | InterruptedException e) {
-                  throw new RuntimeException(e);
-               }
-            }
-
-            default -> {
-               try {
-                  String name = getUsername(message);
-                  String birthday = getUserBirthday(message);
-
-                  if (name == null) { //check username
-                     sendMessage(chatId, "Please enter your name:");
-
-                     try {
-                        updateUserName(chatId, messageText);
-
-                     } catch (ExecutionException | InterruptedException e) {
-                        throw new RuntimeException(e);
-                     }
-                  } else if (birthday == null) { // check birthday
-                     startCommandReceived(chatId, username);
-                     sendMessage(chatId, "Please enter your date of birth (DD/MM/YYYY):");
-
-                     if (messageText.matches("\\d{2}-\\d{2}-\\d{4}")) {
-                        sendMessage(chatId, "Your date of birth has been saved successfully!");
-                        updateBirthday(update, messageText);
-
-                     } else {
-                        sendMessage(chatId, "Sorry, command was not recognized. Please enter your date of birth in the format YYYY-MM-DD.");
-                     }
-                  } else {
-                     startCommandReceived(chatId, username);
-                  }
-               } catch (ExecutionException | InterruptedException e) {
-                  throw new RuntimeException(e);
-               }
-            }
-         }
+   // EXECUTE MESSAGE
+   private void executeMessage(SendMessage message) {
+      try {
+         execute(message);
+      } catch (TelegramApiException e) {
+         log.error(ERROR_TEXT + e.getMessage());
       }
    }
+
+   // PREPARE AND SEND MESSAGE
+   private void prepareAndSendMessage(long chatId, String textToSend) {
+      SendMessage message = new SendMessage();
+      message.setChatId(String.valueOf(chatId));
+      message.setText(textToSend);
+      executeMessage(message);
+   }
+
+   // UPDATE - USER BIRTHDAY
+   public void updateBirthday(Update update, String date) throws ExecutionException, InterruptedException {
+      String userId = update.getMessage().getChatId().toString();
+
+      Firestore dbFirestore = FirestoreClient.getFirestore();
+      DocumentReference documentReference = dbFirestore.collection("users").document(userId);
+
+      ApiFuture<DocumentSnapshot> future = documentReference.get();
+      DocumentSnapshot documentSnapshot = future.get();
+
+      if (documentSnapshot.exists()) {
+         User user = documentSnapshot.toObject(User.class);
+
+         user.setUserBirthday(date);
+         dbFirestore.collection("users").document(String.valueOf(user.getUserId())).set(user);
+
+         log.info(
+                 String.format("User(userId=%s): changed date of birth to {%s}",
+                         user.getUserId(), date));
+      }
+   }
+
+   // CHECK ID IN DB
+   private boolean userIdExists(Firestore dbFirestore, String userId)
+           throws ExecutionException, InterruptedException {
+
+      return dbFirestore.collection("users").document(userId).get().get().exists();
+   }
+
+   // ============   EXPERIMENTS   ================================
 
    // REGISTRATION QUESTION
    private void register(Long chatId, String username) {
@@ -342,7 +313,6 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-
    // READ - USER BIRTHDAY
    public String checkBirthday(Long chatId) throws UserException, ExecutionException, InterruptedException {
       if (chatId != null) {
@@ -366,50 +336,12 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-   // UPDATE - USER BIRTHDAY
-   public void updateBirthday(Update update, String date) throws ExecutionException, InterruptedException {
-      String userId = update.getMessage().getChatId().toString();
-
-      Firestore dbFirestore = FirestoreClient.getFirestore();
-      DocumentReference documentReference = dbFirestore.collection("users").document(userId);
-
-      ApiFuture<DocumentSnapshot> future = documentReference.get();
-      DocumentSnapshot documentSnapshot = future.get();
-
-      if (documentSnapshot.exists()) {
-         User user = documentSnapshot.toObject(User.class);
-
-         user.setUserBirthday(date);
-         dbFirestore.collection("users").document(String.valueOf(user.getUserId())).set(user);
-
-         log.info(
-                 String.format("User(userId=%s): changed date of birth to {%s}",
-                         user.getUserId(), date));
-      }
-
-   }
-
-   // CHECK ID IN DB
-   private boolean userIdExists(Firestore dbFirestore, String userId)
-           throws ExecutionException, InterruptedException {
-
-      return dbFirestore.collection("users").document(userId).get().get().exists();
-   }
-
    private void executeEditMessageText(String text, long chatId, long messageId) {
       EditMessageText message = new EditMessageText();
       message.setChatId(String.valueOf(chatId));
       message.setText(text);
       message.setMessageId((int) messageId);
 
-      try {
-         execute(message);
-      } catch (TelegramApiException e) {
-         log.error(ERROR_TEXT + e.getMessage());
-      }
-   }
-
-   private void executeMessage(SendMessage message) {
       try {
          execute(message);
       } catch (TelegramApiException e) {
