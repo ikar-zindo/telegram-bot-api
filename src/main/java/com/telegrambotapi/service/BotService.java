@@ -71,6 +71,7 @@ public class BotService extends TelegramLongPollingBot {
    public void setService(ChatGPTService service) {
       chatGPTService = service;
    }
+
    @Autowired
    public void setEnv(Environment environment) {
       BotService.environment = environment;
@@ -124,24 +125,19 @@ public class BotService extends TelegramLongPollingBot {
 
                } else {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
-                          "YYYY-MM-DD.");
+                          "DD/MM/YYYY");
                }
                // =====   CASES   ======================================================================================
             } else {
                switch (messageText) {
                   case "/start" -> {
-                     startCommandReceived(chatId, username);
-
-                     pong(sendMessage, String.valueOf(chatId), messageText);
-
-                     askGpt(sendMessage, String.valueOf(chatId), messageText);
-//                     register(chatId);
+                     sendMessage(chatId, "Здравствуйте, " + username);
+                     register(chatId);
                   }
 
                   case "/help" -> prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
 
                   default -> {
-                     pong(sendMessage, String.valueOf(chatId), messageText);
                      askGpt(sendMessage, String.valueOf(chatId), messageText);
                   }
                }
@@ -153,6 +149,7 @@ public class BotService extends TelegramLongPollingBot {
 
    /**
     * Sends your request to chatGPT using #ChatGPTService.askChatGPT
+    *
     * @param sendMessage
     * @param chatId
     * @param text
@@ -162,7 +159,7 @@ public class BotService extends TelegramLongPollingBot {
 
       try {
          sendMessage.setChatId(chatId);
-         sendMessage.setText("Ответ GPT: " + gptResponse);
+         sendMessage.setText(gptResponse);
          execute(sendMessage);
 
       } catch (TelegramApiException e) {
@@ -172,6 +169,7 @@ public class BotService extends TelegramLongPollingBot {
 
    /**
     * Gives a feedback about what you are requesting to chatGPT
+    *
     * @param sendMessage
     * @param chatId
     * @param text
