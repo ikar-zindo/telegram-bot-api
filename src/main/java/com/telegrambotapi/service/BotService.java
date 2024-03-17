@@ -120,7 +120,6 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
                   startCommandReceived(chatId, username);
 
-                  register(chatId);
                   askGpt(BotConstants.HELLO_ASSISTANT);
                   currentMode = "/assistant";
 
@@ -133,7 +132,7 @@ public class BotService extends TelegramLongPollingBot {
                switch (messageText) {
                   case "/start" -> {
                      sendMessage(chatId, "Здравствуйте, " + username);
-                     chatGPT(chatId);
+                     assistantActivate(chatId);
                      currentMode = "/assistant";
                   }
 
@@ -143,7 +142,7 @@ public class BotService extends TelegramLongPollingBot {
                   }
 
                   case "/assistant" -> {
-                     chatGPT(chatId);
+                     assistantActivate(chatId);
                      askGpt(BotConstants.HELLO_ASSISTANT);
                      currentMode = "/assistant";
                   }
@@ -205,7 +204,7 @@ public class BotService extends TelegramLongPollingBot {
     * @param chatId
     * @param text
     */
-   private void askGpt(SendMessage sendMessage, String chatId, String text) {
+   private String askGpt(SendMessage sendMessage, String chatId, String text) {
       String gptResponse = chatGPTService.askChatGPTText(text);
 
       try {
@@ -216,6 +215,8 @@ public class BotService extends TelegramLongPollingBot {
       } catch (TelegramApiException e) {
          throw new RuntimeException(e);
       }
+
+      return gptResponse;
    }
 
    /**
@@ -372,7 +373,7 @@ public class BotService extends TelegramLongPollingBot {
       return dbFirestore.collection("users").document(userId).get().get().exists();
    }
 
-   public void chatGPT(Long chatId) throws TelegramApiException {
+   public void assistantActivate(Long chatId) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
       message.setText("Чем я могу вам помочь?\nХотите пообщаться с ChatGPT?");
@@ -381,11 +382,11 @@ public class BotService extends TelegramLongPollingBot {
       List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
       List<InlineKeyboardButton> rowInline = new ArrayList<>();
 
-      var yesButton = new InlineKeyboardButton();
+      InlineKeyboardButton yesButton = new InlineKeyboardButton();
       yesButton.setText("Да!");
       yesButton.setCallbackData(BotConstants.YES_BUTTON);
 
-      var noButton = new InlineKeyboardButton();
+      InlineKeyboardButton noButton = new InlineKeyboardButton();
       noButton.setText("Нет!");
       noButton.setCallbackData(BotConstants.NO_BUTTON);
 
@@ -396,39 +397,9 @@ public class BotService extends TelegramLongPollingBot {
       message.setReplyMarkup(markupInline);
 
       execute(message);
-
    }
 
    // =====   EXPERIMENTS   ============================================================================================
-
-   // REGISTRATION QUESTION
-   private void register(Long chatId) throws TelegramApiException {
-
-      SendMessage message = new SendMessage();
-      message.setChatId(String.valueOf(chatId));
-      message.setText("Чем я могу вам помочь?\nХотите пообщаться с ChatGPT?");
-
-      InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
-      List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-      List<InlineKeyboardButton> rowInline = new ArrayList<>();
-
-      var yesButton = new InlineKeyboardButton();
-      yesButton.setText("Да!");
-      yesButton.setCallbackData(BotConstants.YES_BUTTON);
-
-      var noButton = new InlineKeyboardButton();
-      noButton.setText("Нет!");
-      noButton.setCallbackData(BotConstants.NO_BUTTON);
-
-      rowInline.add(yesButton);
-      rowInline.add(noButton);
-      rowsInline.add(rowInline);
-      markupInline.setKeyboard(rowsInline);
-      message.setReplyMarkup(markupInline);
-
-      execute(message);
-   }
-
    // READ - USER BIRTHDAY
    public String checkBirthday(Long chatId) throws UserException, ExecutionException, InterruptedException {
       if (chatId != null) {
