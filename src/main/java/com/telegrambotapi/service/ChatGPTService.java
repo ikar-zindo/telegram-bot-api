@@ -1,6 +1,6 @@
 package com.telegrambotapi.service;
 
-import com.telegrambotapi.constants.BotConstants;
+import com.telegrambotapi.constant.BotConstants;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,32 +21,32 @@ import java.util.Map;
 public class ChatGPTService {
 
    public static final String CHOICES = "choices";
-   public static final String TEXT = "text";
+
    @Value("${bot.text.temperature}")
    Double temperature;
+
    @Value("${bot.text.model}")
    String textModel;
+
    @Value("${bot.text.top-p}")
    Double topP;
+
    @Value("${bot.text.frequency-penalty}")
    Double freqPenalty;
+
    @Value("${bot.text.presence-penalty}")
    Double presPenalty;
+
    @Value("${api.token}")
    String apiToken;
+
    @Value("${bot.text.max-tokens}")
    Integer maxTokens;
+
    @Value("${api.url.completions}")
    String urlCompletions;
 
-   /**
-    * Sends a request to chatGPT's text generator
-    *
-    * @param msg
-    * @return
-    */
    public String askChatGPTText(String msg) {
-
       RestTemplate restTemplate = new RestTemplate();
       HttpHeaders headers = setHeaders();
 

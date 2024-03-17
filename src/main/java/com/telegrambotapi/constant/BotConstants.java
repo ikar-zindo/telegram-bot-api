@@ -1,4 +1,4 @@
-package com.telegrambotapi.constants;
+package com.telegrambotapi.constant;
 
 public class BotConstants {
 

@@ -3,11 +3,12 @@ package com.telegrambotapi.service;
 import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 import com.telegrambotapi.config.BotConfig;
-import com.telegrambotapi.constants.BotConstants;
+import com.telegrambotapi.constant.BotConstants;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -91,7 +92,7 @@ public class BotService extends TelegramLongPollingBot {
 
             if (messageText.equals("/start") && username == null) {
                sendMessage(chatId, BotConstants.FIRST_GREETING);
-               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
+               expectedName = update.getMessage().getChat().getUserName();
 
             } else if (messageText != null && expectedName != null) {
                username = messageText;
@@ -127,12 +128,16 @@ public class BotService extends TelegramLongPollingBot {
                      currentMode = "/start";
                   }
                   case "/help" -> {
-                     prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
+                     sendMessage(chatId, BotConstants.HELP_TEXT);
                      currentMode = "/help";
                   }
                   case "/assistant" -> {
                      assistantActivate(chatId);
                      currentMode = "/assistant";
+                  }
+                  case "/photo" -> {
+                     sendMessage(chatId, "Добавь своё фото");
+                     currentMode = "/photo";
                   }
                   default -> {
                      if ("/assistant".equals(currentMode)) {
@@ -155,13 +160,12 @@ public class BotService extends TelegramLongPollingBot {
                }
                case BotConstants.NO_BUTTON -> {
                   executeEditMessageText(BotConstants.REJECTION_ASSISTANT, callbackChatId, callbackMessageId);
-                  currentMode = "/start";
+                  currentMode = "/default";
                }
             }
             // ====  HAS PHOTO  ===================================================================================
          } else if (update.hasMessage() && update.getMessage().hasPhoto()) {
             Long chatId = update.getMessage().getChatId();
-            String messageText = update.getMessage().getText();
             String userBirthday = userService.getUserBirthday(update.getMessage());
 
             Random random = new Random();
@@ -192,7 +196,8 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // GET ANSWER FROM ChatGPT
-   private String askGpt(String text) {
+   @Async
+   public String askGpt(String text) {
       return chatGPTService.askChatGPTText(text);
    }
 
@@ -215,15 +220,6 @@ public class BotService extends TelegramLongPollingBot {
       execute(message);
    }
 
-   // PREPARE AND SEND MESSAGE
-   private void prepareAndSendMessage(long chatId, String textToSend) throws TelegramApiException {
-      SendMessage message = new SendMessage();
-      message.setChatId(String.valueOf(chatId));
-      message.setText(textToSend);
-
-      executeMessage(message);
-   }
-
    // EXECUTE EDIT MESSAGE TEXT
    private void executeEditMessageText(String text, long chatId, long messageId) throws TelegramApiException {
       EditMessageText message = new EditMessageText();
@@ -235,6 +231,7 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // START BUTTONS ASSISTANT
+   @Async
    public void assistantActivate(Long chatId) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
@@ -266,6 +263,7 @@ public class BotService extends TelegramLongPollingBot {
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "Начать пользование"));
       listOfCommands.add(new BotCommand("/assistant", "Перейти к личному ассистенту"));
+      listOfCommands.add(new BotCommand("/photo", "Перейти к добавлению фото"));
       listOfCommands.add(new BotCommand("/help", "Запросить помощь по командам"));
 
       this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));

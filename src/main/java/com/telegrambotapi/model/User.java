@@ -1,4 +1,4 @@
-package com.telegrambotapi.domain;
+package com.telegrambotapi.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
