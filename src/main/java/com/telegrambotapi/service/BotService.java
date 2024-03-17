@@ -119,8 +119,6 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
                   startCommandReceived(chatId, username);
 
-                  pong(sendMessage, String.valueOf(chatId), messageText);
-
                   askGpt(sendMessage, String.valueOf(chatId), messageText);
 
                } else {
@@ -344,7 +342,7 @@ public class BotService extends TelegramLongPollingBot {
 
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
-      message.setText("Хотите пообщаться с ChatGPT");
+      message.setText("Чем я могу вам помочь?\nХотите пообщаться с ChatGPT?");
 
       InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
       List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
