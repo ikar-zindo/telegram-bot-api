@@ -38,14 +38,9 @@ import java.util.concurrent.ExecutionException;
 public class BotService extends TelegramLongPollingBot {
 
    public final BotConfig config;
-
    public static ChatGPTService chatGPTService;
-
    public static Environment environment;
-
    private String currentMode = "default";
-
-
    private String expectedName = null;
    private String expectedBirthday = null;
 
@@ -162,12 +157,9 @@ public class BotService extends TelegramLongPollingBot {
             }
          } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
          }
+         // =====   CALLBACK QUERY   ===================================================================================
       } else if (update.hasCallbackQuery()) {
-
-
          try {
-
-
             String callbackData = update.getCallbackQuery().getData();
             long callbackMessageId = update.getCallbackQuery().getMessage().getMessageId();
             long callbackChatId = update.getCallbackQuery().getMessage().getChatId();
