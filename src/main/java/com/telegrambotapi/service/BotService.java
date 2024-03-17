@@ -43,12 +43,19 @@ public class BotService extends TelegramLongPollingBot {
 
    public static Environment environment;
 
+   private String currentMode = "default";
+
+
+   private String expectedName = null;
+   private String expectedBirthday = null;
+
    public BotService(BotConfig config) throws TelegramApiException {
       this.config = config;
 
       List<BotCommand> listOfCommands = new ArrayList<>();
-      listOfCommands.add(new BotCommand("/start", "get a welcome message"));
-      listOfCommands.add(new BotCommand("/help", "help how to use bot"));
+      listOfCommands.add(new BotCommand("/start", "Начать пользование"));
+      listOfCommands.add(new BotCommand("/assistant", "Перейти к личному ассистенту"));
+      listOfCommands.add(new BotCommand("/help", "Запросить помощь по командам"));
 
       this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
    }
@@ -73,8 +80,6 @@ public class BotService extends TelegramLongPollingBot {
       BotService.environment = environment;
    }
 
-   private String expectedName = null;
-   private String expectedBirthday = null;
 
    @Override
    public void onUpdateReceived(Update update) {
@@ -87,8 +92,11 @@ public class BotService extends TelegramLongPollingBot {
 
          // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
          try {
-            createUser(update.getMessage());
-            Thread.sleep(3_000);
+            if (!userIdExists(dbFirestore, String.valueOf(chatId))) {
+               createUser(update.getMessage());
+               Thread.sleep(3_000);
+            }
+
             String username = getUsername(update.getMessage());
             String userBirthday = getUserBirthday(update.getMessage());
 
@@ -118,6 +126,8 @@ public class BotService extends TelegramLongPollingBot {
                   startCommandReceived(chatId, username);
 
                   register(chatId);
+                  askGpt(BotConstants.HELLO_ASSISTANT);
+                  currentMode = "/assistant";
 
                } else {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
@@ -128,19 +138,72 @@ public class BotService extends TelegramLongPollingBot {
                switch (messageText) {
                   case "/start" -> {
                      sendMessage(chatId, "Здравствуйте, " + username);
-                     register(chatId);
+                     chatGPT(chatId);
+                     currentMode = "/assistant";
                   }
 
-                  case "/help" -> prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
+                  case "/help" -> {
+                     prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
+                     currentMode = "/help";
+                  }
+
+                  case "/assistant" -> {
+                     chatGPT(chatId);
+                     askGpt(BotConstants.HELLO_ASSISTANT);
+                     currentMode = "/assistant";
+                  }
 
                   default -> {
-                     askGpt(sendMessage, String.valueOf(chatId), messageText);
+                     if ("/assistant".equals(currentMode)) {
+                        askGpt(sendMessage, String.valueOf(chatId), messageText);
+                     }
                   }
                }
             }
          } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
          }
+      } else if (update.hasCallbackQuery()) {
+
+
+         try {
+
+
+            String callbackData = update.getCallbackQuery().getData();
+            long callbackMessageId = update.getCallbackQuery().getMessage().getMessageId();
+            long callbackChatId = update.getCallbackQuery().getMessage().getChatId();
+
+            switch (callbackData) {
+               case BotConstants.YES_BUTTON -> {
+                  String text = BotConstants.HELLO_ASSISTANT;
+                  EditMessageText editMessageText = new EditMessageText();
+                  editMessageText.setChatId(callbackChatId);
+                  editMessageText.setText(text);
+                  editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
+                  currentMode = "/assistant";
+
+                  execute(editMessageText);
+               }
+
+               case BotConstants.NO_BUTTON -> {
+                  String text = "Если захотите задать вопрос личному ассистенту вы можете перейти в меню\n" +
+                          "Или просто нажать здесь /assistant";
+                  EditMessageText editMessageText = new EditMessageText();
+                  editMessageText.setChatId(callbackChatId);
+                  editMessageText.setText(text);
+                  editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
+                  currentMode = "/start";
+
+                  execute(editMessageText);
+               }
+            }
+         } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+         }
       }
+   }
+
+   private String askGpt(String text) {
+      return chatGPTService.askChatGPTText(text);
    }
 
    /**
@@ -315,6 +378,33 @@ public class BotService extends TelegramLongPollingBot {
            throws ExecutionException, InterruptedException {
 
       return dbFirestore.collection("users").document(userId).get().get().exists();
+   }
+
+   public void chatGPT(Long chatId) throws TelegramApiException {
+      SendMessage message = new SendMessage();
+      message.setChatId(String.valueOf(chatId));
+      message.setText("Чем я могу вам помочь?\nХотите пообщаться с ChatGPT?");
+
+      InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
+      List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
+      List<InlineKeyboardButton> rowInline = new ArrayList<>();
+
+      var yesButton = new InlineKeyboardButton();
+      yesButton.setText("Да!");
+      yesButton.setCallbackData(BotConstants.YES_BUTTON);
+
+      var noButton = new InlineKeyboardButton();
+      noButton.setText("Нет!");
+      noButton.setCallbackData(BotConstants.NO_BUTTON);
+
+      rowInline.add(yesButton);
+      rowInline.add(noButton);
+      rowsInline.add(rowInline);
+      markupInline.setKeyboard(rowsInline);
+      message.setReplyMarkup(markupInline);
+
+      execute(message);
+
    }
 
    // =====   EXPERIMENTS   ============================================================================================

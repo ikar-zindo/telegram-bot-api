@@ -14,6 +14,8 @@ public class BotConstants {
    public static final String NO_BUTTON = "NO_BUTTON";
    public static final String ERROR_TEXT = "Error occurred: ";
 
+   public static final String HELLO_ASSISTANT = "Привет. Я той персональный ассистент. Чем могу помочь?";
+
    public static final String HELP_TEXT = "This bot is created to demonstrate Spring capabilities.\n\n" +
            "You can execute commands from the main menu on the left or by typing a command:\n\n" +
            "Time /start to see a welcome message\n\n" +
