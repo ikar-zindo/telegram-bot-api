@@ -79,6 +79,7 @@ public class BotService extends TelegramLongPollingBot {
    @Override
    public void onUpdateReceived(Update update) {
       SendMessage sendMessage = new SendMessage();
+      Firestore dbFirestore = FirestoreClient.getFirestore();
 
       if (update.hasMessage() && update.getMessage().hasText()) {
          Long chatId = update.getMessage().getChatId();
@@ -87,6 +88,7 @@ public class BotService extends TelegramLongPollingBot {
          // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
          try {
             createUser(update.getMessage());
+            Thread.sleep(3_000);
             String username = getUsername(update.getMessage());
             String userBirthday = getUserBirthday(update.getMessage());
 
@@ -115,7 +117,7 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
                   startCommandReceived(chatId, username);
 
-                  askGpt(sendMessage, String.valueOf(chatId), messageText);
+                  register(chatId);
 
                } else {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
@@ -301,8 +303,10 @@ public class BotService extends TelegramLongPollingBot {
       if (documentSnapshot.exists()) {
          User user = documentSnapshot.toObject(User.class);
 
-         user.setUserBirthday(date);
-         dbFirestore.collection("users").document(String.valueOf(user.getUserId())).set(user);
+         if (user != null) {
+            user.setUserBirthday(date);
+            dbFirestore.collection("users").document(String.valueOf(user.getUserId())).set(user);
+         }
       }
    }
 
@@ -359,7 +363,7 @@ public class BotService extends TelegramLongPollingBot {
             return date;
          } else {
             throw new UserException(String.format(
-                    "User not found in DB with id=%s", String.valueOf(chatId)));
+                    "User not found in DB with id=%s", chatId));
          }
       } else {
          throw new UserException("ChatId not found!");
