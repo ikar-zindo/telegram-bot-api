@@ -163,6 +163,9 @@ public class BotService extends TelegramLongPollingBot {
       } catch (TelegramApiException e) {
          throw new RuntimeException(e);
       }
+
+      log.info("User: {" + chatId + "} ask to ChatGPT:" + text);
+      log.info("User: {" + chatId + "} get answer from ChatGPT:" + gptResponse);
    }
 
    /**
