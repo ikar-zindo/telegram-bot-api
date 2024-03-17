@@ -77,6 +77,7 @@ public class BotService extends TelegramLongPollingBot {
       Firestore dbFirestore = FirestoreClient.getFirestore();
 
       try {
+         // ====  SEND MESSAGE  ========================================================================================
          if (update.hasMessage() && update.getMessage().hasText()) {
             Long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
@@ -109,11 +110,10 @@ public class BotService extends TelegramLongPollingBot {
 
                if (messageText.matches(BotConstants.BIRTHDAY_REGEX)) {
                   userService.updateBirthday(update, birthday);
-
                   expectedBirthday = null;
+
                   sendMessage(chatId, BotConstants.BIRTHDAY_EXCEPT);
                   startCommandReceived(chatId, username);
-
                   assistantActivate(chatId);
 
                } else {
@@ -123,21 +123,21 @@ public class BotService extends TelegramLongPollingBot {
             } else {
                switch (messageText) {
                   case "/start" -> {
+                     currentMode = "/start";
                      sendMessage(chatId, "Здравствуйте, " + username);
                      assistantActivate(chatId);
-                     currentMode = "/start";
                   }
                   case "/help" -> {
-                     sendMessage(chatId, BotConstants.HELP_TEXT);
                      currentMode = "/help";
+                     sendMessage(chatId, BotConstants.HELP_TEXT);
                   }
                   case "/assistant" -> {
-                     assistantActivate(chatId);
                      currentMode = "/assistant";
+                     assistantActivate(chatId);
                   }
                   case "/photo" -> {
-                     sendMessage(chatId, "Добавь своё фото");
                      currentMode = "/photo";
+                     sendMessage(chatId, "Добавь своё фото");
                   }
                   default -> {
                      if ("/assistant".equals(currentMode)) {
@@ -154,16 +154,16 @@ public class BotService extends TelegramLongPollingBot {
 
             switch (callbackData) {
                case BotConstants.YES_BUTTON -> {
+                  currentMode = "/assistant";
                   String text = askGpt(BotConstants.HELLO_ASSISTANT);
                   executeEditMessageText(text, callbackChatId, callbackMessageId);
-                  currentMode = "/assistant";
                }
                case BotConstants.NO_BUTTON -> {
-                  executeEditMessageText(BotConstants.REJECTION_ASSISTANT, callbackChatId, callbackMessageId);
                   currentMode = "/default";
+                  executeEditMessageText(BotConstants.REJECTION_ASSISTANT, callbackChatId, callbackMessageId);
                }
             }
-            // ====  HAS PHOTO  ===================================================================================
+            // ==== ADD PHOTO  =========================================================================================
          } else if (update.hasMessage() && update.getMessage().hasPhoto()) {
             Long chatId = update.getMessage().getChatId();
             String userBirthday = userService.getUserBirthday(update.getMessage());
@@ -212,6 +212,7 @@ public class BotService extends TelegramLongPollingBot {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
       message.setText(textToSend);
+
       execute(message);
    }
 
