@@ -43,18 +43,14 @@ public class BotService extends TelegramLongPollingBot {
 
    public static Environment environment;
 
-   public BotService(BotConfig config) {
+   public BotService(BotConfig config) throws TelegramApiException {
       this.config = config;
 
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "get a welcome message"));
       listOfCommands.add(new BotCommand("/help", "help how to use bot"));
 
-      try {
-         this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
-      } catch (TelegramApiException e) {
-         log.error("Error setting bot`s command list: " + e.getMessage());
-      }
+      this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
    }
 
    @Override
@@ -140,7 +136,7 @@ public class BotService extends TelegramLongPollingBot {
                   }
                }
             }
-         } catch (ExecutionException | InterruptedException ignored) {
+         } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
          }
       }
    }
@@ -163,9 +159,6 @@ public class BotService extends TelegramLongPollingBot {
       } catch (TelegramApiException e) {
          throw new RuntimeException(e);
       }
-
-      log.info("User: {" + chatId + "} ask to ChatGPT:" + text);
-      log.info("User: {" + chatId + "} get answer from ChatGPT:" + gptResponse);
    }
 
    /**
@@ -188,25 +181,17 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // START
-   private void startCommandReceived(Long chatId, String name) {
+   private void startCommandReceived(Long chatId, String name) throws TelegramApiException {
       String answer = EmojiParser.parseToUnicode(String.format("Здравствуй, %s, Приятно познакомится!, \uD83D\uDE0A", name));
       sendMessage(chatId, answer);
-
-      log.info("Replied to user " + name);
    }
 
    // SEND MESSAGE
-   private void sendMessage(Long chatId, String textToSend) {
+   private void sendMessage(Long chatId, String textToSend) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
       message.setText(textToSend);
-
-      try {
-         execute(message);
-
-      } catch (TelegramApiException e) {
-         log.error("Error occurred: " + e.getMessage());
-      }
+      execute(message);
    }
 
    // CREATE - USER
@@ -224,8 +209,6 @@ public class BotService extends TelegramLongPollingBot {
 
          ApiFuture<WriteResult> future =
                  dbFirestore.collection("users").document(chatId).set(user);
-
-         log.info("User saved in DB: " + user);
       }
    }
 
@@ -292,16 +275,12 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // EXECUTE MESSAGE
-   private void executeMessage(SendMessage message) {
-      try {
-         execute(message);
-      } catch (TelegramApiException e) {
-         log.error(BotConstants.ERROR_TEXT + e.getMessage());
-      }
+   private void executeMessage(SendMessage message) throws TelegramApiException {
+      execute(message);
    }
 
    // PREPARE AND SEND MESSAGE
-   private void prepareAndSendMessage(long chatId, String textToSend) {
+   private void prepareAndSendMessage(long chatId, String textToSend) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
       message.setText(textToSend);
@@ -324,10 +303,6 @@ public class BotService extends TelegramLongPollingBot {
 
          user.setUserBirthday(date);
          dbFirestore.collection("users").document(String.valueOf(user.getUserId())).set(user);
-
-         log.info(
-                 String.format("User(userId=%s): changed date of birth to {%s}",
-                         user.getUserId(), date));
       }
    }
 
@@ -341,7 +316,7 @@ public class BotService extends TelegramLongPollingBot {
    // =====   EXPERIMENTS   ============================================================================================
 
    // REGISTRATION QUESTION
-   private void register(Long chatId) {
+   private void register(Long chatId) throws TelegramApiException {
 
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
@@ -365,11 +340,7 @@ public class BotService extends TelegramLongPollingBot {
       markupInline.setKeyboard(rowsInline);
       message.setReplyMarkup(markupInline);
 
-      try {
-         execute(message);
-      } catch (TelegramApiException e) {
-         log.error(BotConstants.ERROR_TEXT + e.getMessage());
-      }
+      execute(message);
    }
 
    // READ - USER BIRTHDAY
@@ -395,16 +366,12 @@ public class BotService extends TelegramLongPollingBot {
       }
    }
 
-   private void executeEditMessageText(String text, long chatId, long messageId) {
+   private void executeEditMessageText(String text, long chatId, long messageId) throws TelegramApiException {
       EditMessageText message = new EditMessageText();
       message.setChatId(String.valueOf(chatId));
       message.setText(text);
       message.setMessageId((int) messageId);
 
-      try {
-         execute(message);
-      } catch (TelegramApiException e) {
-         log.error(BotConstants.ERROR_TEXT + e.getMessage());
-      }
+      execute(message);
    }
 }

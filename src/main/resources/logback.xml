@@ -14,7 +14,7 @@
 		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
 			<fileNamePattern>logs/${HOSTNAME}.log.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
 
-			<maxHistory>30</maxHistory>
+			<maxHistory>3</maxHistory>
 
 			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
 				<maxFileSize>200MB</maxFileSize>
@@ -40,17 +40,5 @@
 
 	<root level="INFO">
 		<appender-ref ref="STDOUT"/>
-		<appender-ref ref="FILE"/>
 	</root>
-
-	<root level="WARN">
-		<appender-ref ref="STDOUT"/>
-		<appender-ref ref="FILE"/>
-	</root>
-
-	<root level="ERROR">
-		<appender-ref ref="STDOUT"/>
-		<appender-ref ref="FILE"/>
-	</root>
-
 </configuration>

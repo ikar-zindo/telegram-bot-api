@@ -25,6 +25,13 @@
 			<version>${telegram.version}</version>
 		</dependency>
 
+<!--		<dependency>-->
+<!--			<groupId>com.github.pengrad</groupId>-->
+<!--			<artifactId>java-telegram-bot-api</artifactId>-->
+<!--			<version>5.7.0</version>-->
+<!--		</dependency>-->
+
+		<!-- Spring -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
@@ -33,6 +40,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-logging</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 
 <!--		<dependency>-->
@@ -46,6 +59,17 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.aspectj</groupId>
+			<artifactId>aspectjweaver</artifactId>
+			<version>1.9.7</version> <!-- Замените версию на актуальную -->
 		</dependency>
 
 		<!-- https://mvnrepository.com/artifact/com.google.firebase/firebase-admin -->
