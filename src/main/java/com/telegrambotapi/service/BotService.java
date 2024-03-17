@@ -38,7 +38,7 @@ public class BotService extends TelegramLongPollingBot {
 
    public static Environment environment;
 
-   private String currentMode = "default";
+   private String currentMode = "/default";
 
    private String expectedName = null;
 
@@ -124,6 +124,7 @@ public class BotService extends TelegramLongPollingBot {
                   case "/start" -> {
                      sendMessage(chatId, "Здравствуйте, " + username);
                      assistantActivate(chatId);
+                     currentMode = "/start";
                   }
                   case "/help" -> {
                      prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
