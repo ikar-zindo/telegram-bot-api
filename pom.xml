@@ -17,6 +17,7 @@
 		<java.version>17</java.version>
 		<telegram.version>6.5.0</telegram.version>
 	</properties>
+
 	<dependencies>
 
 		<dependency>
@@ -24,12 +25,6 @@
 			<artifactId>telegrambots</artifactId>
 			<version>${telegram.version}</version>
 		</dependency>
-
-<!--		<dependency>-->
-<!--			<groupId>com.github.pengrad</groupId>-->
-<!--			<artifactId>java-telegram-bot-api</artifactId>-->
-<!--			<version>5.7.0</version>-->
-<!--		</dependency>-->
 
 		<!-- Spring -->
 		<dependency>

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -21,9 +22,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 @Component
@@ -158,17 +157,34 @@ public class BotService extends TelegramLongPollingBot {
                   currentMode = "/start";
                }
             }
+            // ====  HAS PHOTO  ===================================================================================
          } else if (update.hasMessage() && update.getMessage().hasPhoto()) {
-
             Long chatId = update.getMessage().getChatId();
-            List<PhotoSize> photos = update.getMessage().getPhoto();
+            String messageText = update.getMessage().getText();
+            String userBirthday = userService.getUserBirthday(update.getMessage());
 
-            PhotoSize photo = photos.stream()
-                    .max(Comparator.comparing(PhotoSize::getFileSize))
-                    .orElse(null);
+            Random random = new Random();
+            boolean success = random.nextBoolean();
 
-            String fieldId = photo.getFileId();
-            sendMessage(chatId, "Спасибо за отправку фото!");
+            // RANDOM SUCCESS
+            if (success) {
+               Calendar calendar = new GregorianCalendar();
+               sendMessage(chatId, askGpt(
+                       String.format("Сколько мне осталось жить если дата моего рождения %s, если сейчас %d год",
+                               userBirthday,  calendar.get(Calendar.YEAR))));
+            } else {
+               List<PhotoSize> photos = update.getMessage().getPhoto();
+
+               PhotoSize photo = photos.stream()
+                       .max(Comparator.comparing(PhotoSize::getFileSize))
+                       .orElse(null);
+
+               String fileId = photo.getFileId();
+               GetFile getFile = new GetFile();
+               getFile.setFileId(fileId);
+               execute(getFile);
+               sendMessage(chatId, "Спасибо за отправку фото!");
+            }
          }
       } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
       }
@@ -217,7 +233,7 @@ public class BotService extends TelegramLongPollingBot {
       execute(message);
    }
 
-   // ==== START BUTTONS ASSISTANT
+   // START BUTTONS ASSISTANT
    public void assistantActivate(Long chatId) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
@@ -244,7 +260,7 @@ public class BotService extends TelegramLongPollingBot {
       execute(message);
    }
 
-   // ==== INITIAL MENU
+   // INITIAL MENU
    public void initialMenu() throws TelegramApiException {
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "Начать пользование"));

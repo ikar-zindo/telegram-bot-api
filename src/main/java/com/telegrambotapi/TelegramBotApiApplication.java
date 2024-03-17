@@ -16,7 +16,7 @@ import java.util.Objects;
 @SpringBootApplication
 public class TelegramBotApiApplication {
 
-	public static void main(String[] args) throws IOException {
+   public static void main(String[] args) throws IOException {
       ClassLoader classLoader = TelegramBotApiApplication.class.getClassLoader();
 
       File file = new File(Objects.requireNonNull(classLoader.getResource("path/to/serviceAccountKey.json")).getFile());
@@ -25,10 +25,11 @@ public class TelegramBotApiApplication {
 
       FirebaseOptions options = new FirebaseOptions.Builder()
               .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+//              .setStorageBucket("gs://telegram-bot-save-user.appspot.com")
               .build();
 
       FirebaseApp.initializeApp(options);
 
-		SpringApplication.run(TelegramBotApiApplication.class, args);
-	}
+      SpringApplication.run(TelegramBotApiApplication.class, args);
+   }
 }

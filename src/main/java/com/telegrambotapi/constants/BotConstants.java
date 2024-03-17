@@ -14,7 +14,8 @@ public class BotConstants {
    public static final String NO_BUTTON = "NO_BUTTON";
    public static final String ERROR_TEXT = "Error occurred: ";
 
-   public static final String HELLO_ASSISTANT = "Ты мой персональный ассистент. Отвечай простым разговорным языком.";
+   public static final String HELLO_ASSISTANT = "Ты мой персональный ассистент. " +
+           "Отвечай простым разговорным языком и короткими предложениями. А теперь поприветствуй меня!";
    public static final String REJECTION_ASSISTANT = "Если захотите задать вопрос личному ассистенту вы можете перейти в меню\n" +
            "Или просто нажать здесь /assistant";
 
