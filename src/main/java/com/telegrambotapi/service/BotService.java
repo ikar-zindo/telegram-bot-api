@@ -7,6 +7,7 @@ import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.WriteResult;
 import com.google.firebase.cloud.FirestoreClient;
 import com.telegrambotapi.config.BotConfig;
+import com.telegrambotapi.constants.BotConstants;
 import com.telegrambotapi.domain.User;
 import com.telegrambotapi.exception.UserException;
 import com.vdurmont.emoji.EmojiParser;
@@ -41,17 +42,6 @@ public class BotService extends TelegramLongPollingBot {
    public static ChatGPTService chatGPTService;
 
    public static Environment environment;
-
-   static final String YES_BUTTON = "YES_BUTTON";
-   static final String NO_BUTTON = "NO_BUTTON";
-   static final String ERROR_TEXT = "Error occurred: ";
-
-   static final String HELP_TEXT = "This bot is created to demonstrate Spring capabilities.\n\n" +
-           "You can execute commands from the main menu on the left or by typing a command:\n\n" +
-           "Time /start to see a welcome message\n\n" +
-           "Type /birthday to see data stored about yourself\n\n" +
-           "Type /deleteBirthday delete your birthday data from DB\n\n" +
-           "Type /help to see this message again";
 
    public BotService(BotConfig config) {
       this.config = config;
@@ -91,70 +81,70 @@ public class BotService extends TelegramLongPollingBot {
 
    @Override
    public void onUpdateReceived(Update update) {
-      SendMessage sendMessage = new SendMessage();
-      String text = update.getMessage().getText();
-      String chatId = String.valueOf(update.getMessage().getChatId());
+//      SendMessage sendMessage = new SendMessage();
+//      String text = update.getMessage().getText();
+//      String chatId = String.valueOf(update.getMessage().getChatId());
+//
+//      pong(sendMessage, chatId, text);
+//
+//      askGpt(sendMessage, chatId, text);
 
-      pong(sendMessage, chatId, text);
 
-      askGpt(sendMessage, chatId, text);
+      if (update.hasMessage() && update.getMessage().hasText()) {
+         Long chatId = update.getMessage().getChatId();
+         String messageText = update.getMessage().getText();
 
+         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
+         try {
+            createUser(update.getMessage());
+            String username = getUsername(update.getMessage());
+            String userBirthday = getUserBirthday(update.getMessage());
 
-//      if (update.hasMessage() && update.getMessage().hasText()) {
-//         Long chatId = update.getMessage().getChatId();
-//         String messageText = update.getMessage().getText();
-//
-//         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
-//         try {
-//            createUser(update.getMessage());
-//            String username = getUsername(update.getMessage());
-//            String userBirthday = getUserBirthday(update.getMessage());
-//
-//            if (messageText.equals("/start") && username == null) {
-//               sendMessage(chatId, "Как я могу к вам обращаться:");
-//               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
-//
-//            } else if (messageText != null && expectedName != null) {
-//               username = messageText;
-//               String name = messageText.trim();
-//               updateUserName(chatId, username);
-//
-//               sendMessage(chatId, "Ваша дата рождения:\n" +
-//                       "DD/MM/YYYY");
-//
-//               expectedBirthday = name;
-//               expectedName = null;
-//
-//            } else if (expectedBirthday != null && userBirthday == null) {
-//               String birthday = messageText.trim();
-//
-//               if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
-//                  updateBirthday(update, birthday);
-//
-//                  expectedBirthday = null;
-//                  sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
-//                  startCommandReceived(chatId, username);
-//
-//               } else {
-//                  sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
-//                          "YYYY-MM-DD.");
-//               }
-//               // =====   CASES   ======================================================================================
-//            } else {
-//               switch (messageText) {
-//                  case "/start" -> {
-//                     startCommandReceived(chatId, username);
-//                     register(chatId);
-//                  }
-//
-//                  case "/help" -> prepareAndSendMessage(chatId, HELP_TEXT);
-//
-//                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
-//               }
-//            }
-//         } catch (ExecutionException | InterruptedException ignored) {
-//         }
-//      }
+            if (messageText.equals("/start") && username == null) {
+               sendMessage(chatId, "Как я могу к вам обращаться:");
+               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
+
+            } else if (messageText != null && expectedName != null) {
+               username = messageText;
+               String name = messageText.trim();
+               updateUserName(chatId, username);
+
+               sendMessage(chatId, "Ваша дата рождения:\n" +
+                       "DD/MM/YYYY");
+
+               expectedBirthday = name;
+               expectedName = null;
+
+            } else if (expectedBirthday != null && userBirthday == null) {
+               String birthday = messageText.trim();
+
+               if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
+                  updateBirthday(update, birthday);
+
+                  expectedBirthday = null;
+                  sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
+                  startCommandReceived(chatId, username);
+
+               } else {
+                  sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
+                          "YYYY-MM-DD.");
+               }
+               // =====   CASES   ======================================================================================
+            } else {
+               switch (messageText) {
+                  case "/start" -> {
+                     startCommandReceived(chatId, username);
+                     register(chatId);
+                  }
+
+                  case "/help" -> prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
+
+                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
+               }
+            }
+         } catch (ExecutionException | InterruptedException ignored) {
+         }
+      }
    }
 
    /**
@@ -164,12 +154,13 @@ public class BotService extends TelegramLongPollingBot {
     * @param text
     */
    private void askGpt(SendMessage sendMessage, String chatId, String text) {
-
       String gptResponse = chatGPTService.askChatGPTText(text);
+
       try {
          sendMessage.setChatId(chatId);
          sendMessage.setText("GPT answers: " + gptResponse);
          execute(sendMessage);
+
       } catch (TelegramApiException e) {
          throw new RuntimeException(e);
       }
@@ -183,9 +174,11 @@ public class BotService extends TelegramLongPollingBot {
     */
    private void pong(SendMessage sendMessage, String chatId, String text) {
       sendMessage.setText("Hello! I'm sending this message to chatGPT: " + text);
+
       try {
          sendMessage.setChatId(chatId);
          execute(sendMessage);
+
       } catch (TelegramApiException e) {
          e.printStackTrace();
       }
@@ -207,6 +200,7 @@ public class BotService extends TelegramLongPollingBot {
 
       try {
          execute(message);
+
       } catch (TelegramApiException e) {
          log.error("Error occurred: " + e.getMessage());
       }
@@ -299,7 +293,7 @@ public class BotService extends TelegramLongPollingBot {
       try {
          execute(message);
       } catch (TelegramApiException e) {
-         log.error(ERROR_TEXT + e.getMessage());
+         log.error(BotConstants.ERROR_TEXT + e.getMessage());
       }
    }
 
@@ -308,6 +302,7 @@ public class BotService extends TelegramLongPollingBot {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
       message.setText(textToSend);
+
       executeMessage(message);
    }
 
@@ -340,7 +335,7 @@ public class BotService extends TelegramLongPollingBot {
       return dbFirestore.collection("users").document(userId).get().get().exists();
    }
 
-   // ============   EXPERIMENTS   ================================
+   // =====   EXPERIMENTS   ============================================================================================
 
    // REGISTRATION QUESTION
    private void register(Long chatId) {
@@ -355,11 +350,11 @@ public class BotService extends TelegramLongPollingBot {
 
       var yesButton = new InlineKeyboardButton();
       yesButton.setText("Да!");
-      yesButton.setCallbackData(YES_BUTTON);
+      yesButton.setCallbackData(BotConstants.YES_BUTTON);
 
       var noButton = new InlineKeyboardButton();
       noButton.setText("Нет!");
-      noButton.setCallbackData(NO_BUTTON);
+      noButton.setCallbackData(BotConstants.NO_BUTTON);
 
       rowInline.add(yesButton);
       rowInline.add(noButton);
@@ -370,7 +365,7 @@ public class BotService extends TelegramLongPollingBot {
       try {
          execute(message);
       } catch (TelegramApiException e) {
-         log.error(ERROR_TEXT + e.getMessage());
+         log.error(BotConstants.ERROR_TEXT + e.getMessage());
       }
    }
 
@@ -406,7 +401,7 @@ public class BotService extends TelegramLongPollingBot {
       try {
          execute(message);
       } catch (TelegramApiException e) {
-         log.error(ERROR_TEXT + e.getMessage());
+         log.error(BotConstants.ERROR_TEXT + e.getMessage());
       }
    }
 }
