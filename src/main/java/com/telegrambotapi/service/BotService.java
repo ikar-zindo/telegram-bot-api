@@ -81,115 +81,110 @@ public class BotService extends TelegramLongPollingBot {
       SendMessage sendMessage = new SendMessage();
       Firestore dbFirestore = FirestoreClient.getFirestore();
 
-      if (update.hasMessage() && update.getMessage().hasText()) {
-         Long chatId = update.getMessage().getChatId();
-         String messageText = update.getMessage().getText();
-
-         // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
-         try {
-            if (!userIdExists(dbFirestore, String.valueOf(chatId))) {
-               createUser(update.getMessage());
-               Thread.sleep(3_000);
-            }
-
-            String username = getUsername(update.getMessage());
-            String userBirthday = getUserBirthday(update.getMessage());
-
-            if (messageText.equals("/start") && username == null) {
-               sendMessage(chatId, "Как я могу к вам обращаться:");
-               expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
-
-            } else if (messageText != null && expectedName != null) {
-               username = messageText;
-               String name = messageText.trim();
-               updateUserName(chatId, username);
-
-               sendMessage(chatId, "Ваша дата рождения:\n" +
-                       "DD/MM/YYYY");
-
-               expectedBirthday = name;
-               expectedName = null;
-
-            } else if (expectedBirthday != null && userBirthday == null) {
-               String birthday = messageText.trim();
-
-               if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
-                  updateBirthday(update, birthday);
-
-                  expectedBirthday = null;
-                  sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
-                  startCommandReceived(chatId, username);
-
-                  askGpt(BotConstants.HELLO_ASSISTANT);
-                  currentMode = "/assistant";
-
-               } else {
-                  sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
-                          "DD/MM/YYYY");
+      try {
+         if (update.hasMessage() && update.getMessage().hasText()) {
+            Long chatId = update.getMessage().getChatId();
+            String messageText = update.getMessage().getText();
+            // =====   1ST ENTRY - INITIALIZATION USER   ==================================================================
+               if (!userIdExists(dbFirestore, String.valueOf(chatId))) {
+                  createUser(update.getMessage());
+                  Thread.sleep(3_000);
                }
-               // =====   CASES   ======================================================================================
-            } else {
-               switch (messageText) {
-                  case "/start" -> {
-                     sendMessage(chatId, "Здравствуйте, " + username);
+
+               String username = getUsername(update.getMessage());
+               String userBirthday = getUserBirthday(update.getMessage());
+
+               if (messageText.equals("/start") && username == null) {
+                  sendMessage(chatId, "Как я могу к вам обращаться:");
+                  expectedName = update.getMessage().getChat().getUserName(); // Устанавливаем ожидание имени для этого чата
+
+               } else if (messageText != null && expectedName != null) {
+                  username = messageText;
+                  String name = messageText.trim();
+                  updateUserName(chatId, username);
+
+                  sendMessage(chatId, "Ваша дата рождения:\n" +
+                          "DD/MM/YYYY");
+
+                  expectedBirthday = name;
+                  expectedName = null;
+
+               } else if (expectedBirthday != null && userBirthday == null) {
+                  String birthday = messageText.trim();
+
+                  if (messageText.matches("^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$")) {
+                     updateBirthday(update, birthday);
+
+                     expectedBirthday = null;
+                     sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
+                     startCommandReceived(chatId, username);
+
                      assistantActivate(chatId);
-                     currentMode = "/assistant";
-                  }
 
-                  case "/help" -> {
-                     prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
-                     currentMode = "/help";
+                  } else {
+                     sendMessage(chatId,
+                             "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
+                             "DD/MM/YYYY");
                   }
+                  // =====   CASES   ===================================================================================
+               } else {
+                  switch (messageText) {
+                     case "/start" -> {
+                        sendMessage(chatId, "Здравствуйте, " + username);
+                        assistantActivate(chatId);
+                     }
 
-                  case "/assistant" -> {
-                     assistantActivate(chatId);
-                     askGpt(BotConstants.HELLO_ASSISTANT);
-                     currentMode = "/assistant";
-                  }
+                     case "/help" -> {
+                        prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
+                        currentMode = "/help";
+                     }
 
-                  default -> {
-                     if ("/assistant".equals(currentMode)) {
-                        askGpt(sendMessage, String.valueOf(chatId), messageText);
+                     case "/assistant" -> {
+                        assistantActivate(chatId);
+                        currentMode = "/assistant";
+                     }
+
+                     default -> {
+                        if ("/assistant".equals(currentMode)) {
+                           askGpt(sendMessage, String.valueOf(chatId), messageText);
+                        }
                      }
                   }
                }
-            }
-         } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
-         }
-         // =====   CALLBACK QUERY   ===================================================================================
-      } else if (update.hasCallbackQuery()) {
-         try {
-            String callbackData = update.getCallbackQuery().getData();
-            long callbackMessageId = update.getCallbackQuery().getMessage().getMessageId();
-            long callbackChatId = update.getCallbackQuery().getMessage().getChatId();
+            // =====   CALLBACK QUERY   ================================================================================
+         } else if (update.hasCallbackQuery()) {
 
-            switch (callbackData) {
-               case BotConstants.YES_BUTTON -> {
-                  String text = BotConstants.HELLO_ASSISTANT;
-                  EditMessageText editMessageText = new EditMessageText();
-                  editMessageText.setChatId(callbackChatId);
-                  editMessageText.setText(text);
-                  editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
-                  currentMode = "/assistant";
+               String callbackData = update.getCallbackQuery().getData();
+               long callbackMessageId = update.getCallbackQuery().getMessage().getMessageId();
+               long callbackChatId = update.getCallbackQuery().getMessage().getChatId();
 
-                  execute(editMessageText);
+               switch (callbackData) {
+                  case BotConstants.YES_BUTTON -> {
+                     String text = BotConstants.HELLO_ASSISTANT;
+                     EditMessageText editMessageText = new EditMessageText();
+                     editMessageText.setChatId(callbackChatId);
+                     editMessageText.setText(text);
+                     editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
+                     currentMode = "/assistant";
+
+                     execute(editMessageText);
+                     askGpt(BotConstants.HELLO_ASSISTANT);
+                  }
+
+                  case BotConstants.NO_BUTTON -> {
+                     String text = "Если захотите задать вопрос личному ассистенту вы можете перейти в меню\n" +
+                             "Или просто нажать здесь /assistant";
+                     EditMessageText editMessageText = new EditMessageText();
+                     editMessageText.setChatId(callbackChatId);
+                     editMessageText.setText(text);
+                     editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
+                     currentMode = "/start";
+
+                     execute(editMessageText);
+                  }
                }
-
-               case BotConstants.NO_BUTTON -> {
-                  String text = "Если захотите задать вопрос личному ассистенту вы можете перейти в меню\n" +
-                          "Или просто нажать здесь /assistant";
-                  EditMessageText editMessageText = new EditMessageText();
-                  editMessageText.setChatId(callbackChatId);
-                  editMessageText.setText(text);
-                  editMessageText.setMessageId(Integer.parseInt(String.valueOf(callbackMessageId)));
-                  currentMode = "/start";
-
-                  execute(editMessageText);
-               }
-            }
-         } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
          }
+      } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
       }
    }
 
