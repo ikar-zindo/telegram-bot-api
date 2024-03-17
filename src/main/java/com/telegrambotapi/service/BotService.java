@@ -81,14 +81,7 @@ public class BotService extends TelegramLongPollingBot {
 
    @Override
    public void onUpdateReceived(Update update) {
-//      SendMessage sendMessage = new SendMessage();
-//      String text = update.getMessage().getText();
-//      String chatId = String.valueOf(update.getMessage().getChatId());
-//
-//      pong(sendMessage, chatId, text);
-//
-//      askGpt(sendMessage, chatId, text);
-
+      SendMessage sendMessage = new SendMessage();
 
       if (update.hasMessage() && update.getMessage().hasText()) {
          Long chatId = update.getMessage().getChatId();
@@ -125,6 +118,10 @@ public class BotService extends TelegramLongPollingBot {
                   sendMessage(chatId, "Спасибо! Ваше имя и день рождения записаны.");
                   startCommandReceived(chatId, username);
 
+                  pong(sendMessage, String.valueOf(chatId), messageText);
+
+                  askGpt(sendMessage, String.valueOf(chatId), messageText);
+
                } else {
                   sendMessage(chatId, "Извините, команда не была распознана. Пожалуйста, введите дату рождения в формате\n" +
                           "YYYY-MM-DD.");
@@ -134,12 +131,19 @@ public class BotService extends TelegramLongPollingBot {
                switch (messageText) {
                   case "/start" -> {
                      startCommandReceived(chatId, username);
-                     register(chatId);
+
+                     pong(sendMessage, String.valueOf(chatId), messageText);
+
+                     askGpt(sendMessage, String.valueOf(chatId), messageText);
+//                     register(chatId);
                   }
 
                   case "/help" -> prepareAndSendMessage(chatId, BotConstants.HELP_TEXT);
 
-                  default -> sendMessage(chatId, "Извините, команда не была распознана.");
+                  default -> {
+                     pong(sendMessage, String.valueOf(chatId), messageText);
+                     askGpt(sendMessage, String.valueOf(chatId), messageText);
+                  }
                }
             }
          } catch (ExecutionException | InterruptedException ignored) {
@@ -158,7 +162,7 @@ public class BotService extends TelegramLongPollingBot {
 
       try {
          sendMessage.setChatId(chatId);
-         sendMessage.setText("GPT answers: " + gptResponse);
+         sendMessage.setText("Ответ GPT: " + gptResponse);
          execute(sendMessage);
 
       } catch (TelegramApiException e) {
@@ -173,7 +177,7 @@ public class BotService extends TelegramLongPollingBot {
     * @param text
     */
    private void pong(SendMessage sendMessage, String chatId, String text) {
-      sendMessage.setText("Hello! I'm sending this message to chatGPT: " + text);
+      sendMessage.setText("Отправил сообщение к chatGPT: " + text);
 
       try {
          sendMessage.setChatId(chatId);
@@ -187,8 +191,8 @@ public class BotService extends TelegramLongPollingBot {
    // START
    private void startCommandReceived(Long chatId, String name) {
       String answer = EmojiParser.parseToUnicode(String.format("Здравствуй, %s, Приятно познакомится!, \uD83D\uDE0A", name));
-
       sendMessage(chatId, answer);
+
       log.info("Replied to user " + name);
    }
 

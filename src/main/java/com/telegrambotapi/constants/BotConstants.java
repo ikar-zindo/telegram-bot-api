@@ -10,7 +10,6 @@ public class BotConstants {
    public static final String TOP_P = "top_p";
    public static final String FREQUENCY_PENALTY = "frequency_penalty";
    public static final String PRESENCE_PENALTY = "presence_penalty";
-
    public static final String YES_BUTTON = "YES_BUTTON";
    public static final String NO_BUTTON = "NO_BUTTON";
    public static final String ERROR_TEXT = "Error occurred: ";
