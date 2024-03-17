@@ -83,9 +83,8 @@ public class BotService extends TelegramLongPollingBot {
             String messageText = update.getMessage().getText();
 
             // ====  1ST ENTRY - INITIALIZATION USER  ==================================================================
-            if (!userService.userIdExists(dbFirestore, String.valueOf(chatId))) {
+            while (!userService.userIdExists(dbFirestore, String.valueOf(chatId))) {
                userService.createUser(update.getMessage());
-               Thread.sleep(3_000);
             }
 
             String username = userService.getUsername(update.getMessage());
