@@ -4,7 +4,6 @@ import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 import com.telegrambotapi.config.BotConfig;
 import com.telegrambotapi.constant.BotConstants;
-import com.telegrambotapi.model.User;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +23,10 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -80,6 +82,7 @@ public class BotService extends TelegramLongPollingBot {
       BotService.environment = environment;
    }
 
+   // ====  START ======================================================================================================
    @Override
    public void onUpdateReceived(Update update) {
       Firestore dbFirestore = FirestoreClient.getFirestore();
@@ -90,7 +93,7 @@ public class BotService extends TelegramLongPollingBot {
             Long chatId = update.getMessage().getChatId();
             String messageText = update.getMessage().getText();
 
-            // ====  1ST ENTRY - INITIALIZATION USER  ==================================================================
+            // ====  1ST ENTRY - INITIALIZATION USER
             while (!userService.userIdExists(dbFirestore, String.valueOf(chatId))) {
                userService.createUser(update.getMessage());
             }
@@ -145,7 +148,7 @@ public class BotService extends TelegramLongPollingBot {
                   }
                   case "/photo" -> {
                      currentMode = "/photo";
-                     sendMessage(chatId, "Добавь своё фото");
+                     sendMessage(chatId, "Добавь своё фото. Нажми на \uD83D\uDCCE");
                   }
                   default -> {
                      if ("/assistant".equals(currentMode)) {
@@ -200,10 +203,14 @@ public class BotService extends TelegramLongPollingBot {
                   String fileId = photo.getFileId();
                   GetFile getFile = new GetFile();
                   getFile.setFileId(fileId);
+
                   execute(getFile);
+
                   sendMessage(chatId, "Мы проверили твоё фото!\nМожешь ознакомится с результатом");
                   sendMessage(chatId, String.format(
-                          "Вероятность прожить дольше, если прямо сейчас покаяться и взять себя в руки\n%d%%", roundedChance));
+                          "Вероятность прожить дольше, если прямо сейчас покаяться и взять себя в руки\n%d%%",
+                          roundedChance));
+
                   return null;
                } catch (TelegramApiException e) {
                   throw new RuntimeException(e);
@@ -213,6 +220,7 @@ public class BotService extends TelegramLongPollingBot {
       } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
       }
    }
+   // =====  END  ======================================================================================================
 
    // GET ANSWER FROM ChatGPT
    public String askGpt(String text) {
