@@ -74,6 +74,19 @@
 			<version>9.2.0</version>
 		</dependency>
 
+		<!-- https://mvnrepository.com/artifact/com.google.firebase/firebase-storage -->
+<!--		<dependency>-->
+<!--			<groupId>com.google.firebase</groupId>-->
+<!--			<artifactId>firebase-storage</artifactId>-->
+<!--			<version>20.3.0</version>-->
+<!--		</dependency>-->
+
+<!--		<dependency>-->
+<!--			<groupId>com.google.firebase</groupId>-->
+<!--			<artifactId>firebase-database</artifactId>-->
+<!--			<version>20.0.0</version>-->
+<!--		</dependency>-->
+
 		<dependency>
 			<groupId>com.vdurmont</groupId>
 			<artifactId>emoji-java</artifactId>

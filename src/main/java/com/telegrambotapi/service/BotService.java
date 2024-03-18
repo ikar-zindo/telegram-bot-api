@@ -4,6 +4,7 @@ import com.google.cloud.firestore.Firestore;
 import com.google.firebase.cloud.FirestoreClient;
 import com.telegrambotapi.config.BotConfig;
 import com.telegrambotapi.constant.BotConstants;
+import com.telegrambotapi.model.User;
 import com.vdurmont.emoji.EmojiParser;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 @Component
@@ -49,7 +51,13 @@ public class BotService extends TelegramLongPollingBot {
       this.config = config;
       this.userService = userService;
 
-      initialMenu();
+      CompletableFuture.runAsync(() -> {
+         try {
+            initialMenu();
+         } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+         }
+      });
    }
 
    @Override
@@ -128,6 +136,7 @@ public class BotService extends TelegramLongPollingBot {
                   }
                   case "/help" -> {
                      currentMode = "/help";
+                     System.out.println("Команда /help выполняется в потоке: " + Thread.currentThread().getName());
                      sendMessage(chatId, BotConstants.HELP_TEXT);
                   }
                   case "/assistant" -> {
@@ -155,6 +164,9 @@ public class BotService extends TelegramLongPollingBot {
                case BotConstants.YES_BUTTON -> {
                   currentMode = "/assistant";
                   String text = askGpt(BotConstants.HELLO_ASSISTANT);
+
+//                  CompletableFuture.runAsync(() -> sendAsyncMessage(callbackChatId, "New thread"));
+
                   executeEditMessageText(text, callbackChatId, callbackMessageId);
                }
                case BotConstants.NO_BUTTON -> {
@@ -167,36 +179,55 @@ public class BotService extends TelegramLongPollingBot {
             Long chatId = update.getMessage().getChatId();
             String userBirthday = userService.getUserBirthday(update.getMessage());
 
-            Random random = new Random();
-            boolean success = random.nextBoolean();
 
-            // RANDOM SUCCESS
-            if (success) {
-               Calendar calendar = new GregorianCalendar();
-               sendMessage(chatId, askGpt(
-                       String.format("Сколько мне осталось жить если дата моего рождения %s, если сейчас %d год",
-                               userBirthday,  calendar.get(Calendar.YEAR))));
-            } else {
-               List<PhotoSize> photos = update.getMessage().getPhoto();
+            // GET PHOTO FROM MESSAGE
+            List<PhotoSize> photos = update.getMessage().getPhoto();
+            PhotoSize photo = photos.stream()
+                    .max(Comparator.comparing(PhotoSize::getFileSize))
+                    .orElse(null);
 
-               PhotoSize photo = photos.stream()
-                       .max(Comparator.comparing(PhotoSize::getFileSize))
-                       .orElse(null);
+            sendMessage(chatId, "Спасибо за отправку фото!");
 
-               String fileId = photo.getFileId();
-               GetFile getFile = new GetFile();
-               getFile.setFileId(fileId);
-               execute(getFile);
-               sendMessage(chatId, "Спасибо за отправку фото!");
-            }
+            // ASYNC GET VALIDATION RESULT
+            CompletableFuture<Double> future = CompletableFuture.supplyAsync(() -> {
+               try {
+                  return photoValidation(photo).get();
+               } catch (InterruptedException | ExecutionException e) {
+                  throw new RuntimeException(e);
+               }
+            });
+
+            // ASYNC WAITING FOR AN ANSWER
+            future.thenApply(chance -> {
+               try {
+                  int roundedChance = (int) Math.round(chance * 100);
+                  String fileId = photo.getFileId();
+                  GetFile getFile = new GetFile();
+                  getFile.setFileId(fileId);
+                  execute(getFile);
+                  sendMessage(chatId, "Мы проверили твоё фото!\nМожешь ознакомится с результатом");
+                  sendMessage(chatId, String.format(
+                          "Вероятность прожить дольше, если прямо сейчас покаяться и взять себя в руки\n%d%%", roundedChance));
+                  return null;
+               } catch (TelegramApiException e) {
+                  throw new RuntimeException(e);
+               }
+            });
+
+//            Calendar calendar = new GregorianCalendar();
+//            sendMessage(chatId, askGpt(
+//                    String.format("Сколько мне осталось жить если дата моего рождения %s, если сейчас %d год",
+//                            userBirthday, calendar.get(Calendar.YEAR))));
          }
       } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
       }
    }
 
    // GET ANSWER FROM ChatGPT
-   @Async
+//   @Async
    public String askGpt(String text) {
+      System.out.println("Метод askGpt выполняется в потоке: " + Thread.currentThread().getName());
+      log.info("Метод askGpt выполняется в потоке: {}", Thread.currentThread().getName());
       return chatGPTService.askChatGPTText(text);
    }
 
@@ -231,7 +262,7 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // START BUTTONS ASSISTANT
-   @Async
+//   @Async
    public void assistantActivate(Long chatId) throws TelegramApiException {
       SendMessage message = new SendMessage();
       message.setChatId(String.valueOf(chatId));
@@ -259,7 +290,9 @@ public class BotService extends TelegramLongPollingBot {
    }
 
    // INITIAL MENU
-   public void initialMenu() throws TelegramApiException {
+   @Async
+   public CompletableFuture<Void> initialMenu() throws TelegramApiException {
+      System.out.println("Метод initialMenu выполняется в потоке: " + Thread.currentThread().getName());
       List<BotCommand> listOfCommands = new ArrayList<>();
       listOfCommands.add(new BotCommand("/start", "Начать пользование"));
       listOfCommands.add(new BotCommand("/assistant", "Перейти к личному ассистенту"));
@@ -267,5 +300,47 @@ public class BotService extends TelegramLongPollingBot {
       listOfCommands.add(new BotCommand("/help", "Запросить помощь по командам"));
 
       this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
+
+      log.info("Метод initialMenu выполняется в потоке: {}", Thread.currentThread().getName());
+      return CompletableFuture.completedFuture(null);
+   }
+
+   @Async
+   public CompletableFuture<Void> sendAsyncMessage(Long chatId, String text) {
+      System.out.println("Метод sendAsyncMessage выполняется в потоке: " + Thread.currentThread().getName());
+      SendMessage message = new SendMessage();
+      message.setChatId(String.valueOf(chatId));
+      message.setText(text);
+
+      try {
+         for (int i = 10; i >= 0; i--) {
+            Thread.sleep(1_000);
+            System.out.println("Sleep := " + i);
+         }
+
+         log.info("Метод sendAsyncMessage выполняется в потоке: {}", Thread.currentThread().getName());
+         execute(message);
+         return CompletableFuture.completedFuture(null);
+      } catch (TelegramApiException e) {
+         CompletableFuture<Void> future = new CompletableFuture<>();
+         future.completeExceptionally(e); // Завершить CompletableFuture с исключением
+         return future;
+      } catch (InterruptedException e) {
+         throw new RuntimeException(e);
+      }
+   }
+
+   // ASYNC PHOTO VALIDATION
+   @Async
+   public CompletableFuture<Double> photoValidation(PhotoSize photoSize) throws InterruptedException {
+      Random random = new Random();
+      double chance = 0.1 + random.nextDouble() * 0.57;
+
+      for (int i = 10; i >= 0; i--) {
+         Thread.sleep(1_000);
+         System.out.println(Thread.currentThread().getName() + " := waiting...  " + i);
+      }
+
+      return CompletableFuture.completedFuture(chance);
    }
 }
