@@ -164,9 +164,6 @@ public class BotService extends TelegramLongPollingBot {
                case BotConstants.YES_BUTTON -> {
                   currentMode = "/assistant";
                   String text = askGpt(BotConstants.HELLO_ASSISTANT);
-
-//                  CompletableFuture.runAsync(() -> sendAsyncMessage(callbackChatId, "New thread"));
-
                   executeEditMessageText(text, callbackChatId, callbackMessageId);
                }
                case BotConstants.NO_BUTTON -> {
@@ -177,8 +174,6 @@ public class BotService extends TelegramLongPollingBot {
             // ==== ADD PHOTO  =========================================================================================
          } else if (update.hasMessage() && update.getMessage().hasPhoto()) {
             Long chatId = update.getMessage().getChatId();
-            String userBirthday = userService.getUserBirthday(update.getMessage());
-
 
             // GET PHOTO FROM MESSAGE
             List<PhotoSize> photos = update.getMessage().getPhoto();
@@ -186,7 +181,8 @@ public class BotService extends TelegramLongPollingBot {
                     .max(Comparator.comparing(PhotoSize::getFileSize))
                     .orElse(null);
 
-            sendMessage(chatId, "Спасибо за отправку фото!");
+            sendMessage(chatId,
+                    "Спасибо за отправку фото!\nВы получите уведомление, после того, как результат будет готов");
 
             // ASYNC GET VALIDATION RESULT
             CompletableFuture<Double> future = CompletableFuture.supplyAsync(() -> {
@@ -213,18 +209,12 @@ public class BotService extends TelegramLongPollingBot {
                   throw new RuntimeException(e);
                }
             });
-
-//            Calendar calendar = new GregorianCalendar();
-//            sendMessage(chatId, askGpt(
-//                    String.format("Сколько мне осталось жить если дата моего рождения %s, если сейчас %d год",
-//                            userBirthday, calendar.get(Calendar.YEAR))));
          }
       } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
       }
    }
 
    // GET ANSWER FROM ChatGPT
-//   @Async
    public String askGpt(String text) {
       System.out.println("Метод askGpt выполняется в потоке: " + Thread.currentThread().getName());
       log.info("Метод askGpt выполняется в потоке: {}", Thread.currentThread().getName());
@@ -305,31 +295,6 @@ public class BotService extends TelegramLongPollingBot {
       return CompletableFuture.completedFuture(null);
    }
 
-   @Async
-   public CompletableFuture<Void> sendAsyncMessage(Long chatId, String text) {
-      System.out.println("Метод sendAsyncMessage выполняется в потоке: " + Thread.currentThread().getName());
-      SendMessage message = new SendMessage();
-      message.setChatId(String.valueOf(chatId));
-      message.setText(text);
-
-      try {
-         for (int i = 10; i >= 0; i--) {
-            Thread.sleep(1_000);
-            System.out.println("Sleep := " + i);
-         }
-
-         log.info("Метод sendAsyncMessage выполняется в потоке: {}", Thread.currentThread().getName());
-         execute(message);
-         return CompletableFuture.completedFuture(null);
-      } catch (TelegramApiException e) {
-         CompletableFuture<Void> future = new CompletableFuture<>();
-         future.completeExceptionally(e); // Завершить CompletableFuture с исключением
-         return future;
-      } catch (InterruptedException e) {
-         throw new RuntimeException(e);
-      }
-   }
-
    // ASYNC PHOTO VALIDATION
    @Async
    public CompletableFuture<Double> photoValidation(PhotoSize photoSize) throws InterruptedException {
@@ -342,5 +307,35 @@ public class BotService extends TelegramLongPollingBot {
       }
 
       return CompletableFuture.completedFuture(chance);
+   }
+
+   // ASYNC TEST MESSAGE
+   @Async
+   public CompletableFuture<Void> sendAsyncMessage(Long chatId, String text) {
+      System.out.println("Метод sendAsyncMessage выполняется в потоке: " + Thread.currentThread().getName());
+      SendMessage message = new SendMessage();
+      message.setChatId(String.valueOf(chatId));
+      message.setText(text);
+
+      try {
+         for (int i = 10; i >= 0; i--) {
+            Thread.sleep(1_000);
+            System.out.println(Thread.currentThread().getName() + " := waiting...  " + i);
+         }
+
+         log.info("Метод sendAsyncMessage выполняется в потоке: {}", Thread.currentThread().getName());
+         execute(message);
+
+         return CompletableFuture.completedFuture(null);
+
+      } catch (TelegramApiException e) {
+         CompletableFuture<Void> future = new CompletableFuture<>();
+         future.completeExceptionally(e); // Завершить CompletableFuture с исключением
+
+         return future;
+
+      } catch (InterruptedException e) {
+         throw new RuntimeException(e);
+      }
    }
 }
