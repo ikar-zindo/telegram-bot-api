@@ -1,10 +1,10 @@
 # telegram-bot-api
 
-### [Start communicating with a personal assistant](https://t.me/saveUserInFirebaseBot)
+### [Начни общение с личным ассистентом](https://t.me/saveUserInFirebaseBot)
 
 ---
 
-### Telegram service with the ability to communicate with chatGPT as a personal assistant
+### Telegram-bot с возможностью общения c ChatPT в качестве личного ассистента
 
 - Spring Boot Framework
 - OpenAI API
