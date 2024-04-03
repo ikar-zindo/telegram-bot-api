@@ -1,7 +1,14 @@
 package com.telegrambotapi.service;
 
+
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.HttpMethod;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import com.google.firebase.cloud.FirestoreClient;
+import com.telegrambotapi.TelegramBotApiApplication;
 import com.telegrambotapi.config.BotConfig;
 import com.telegrambotapi.constant.BotConstants;
 import com.vdurmont.emoji.EmojiParser;
@@ -14,7 +21,9 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
@@ -23,12 +32,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -36,6 +48,9 @@ public class BotService extends TelegramLongPollingBot {
 
    @Autowired
    public static UserService userService;
+
+   @Autowired
+   public static Storage storage;
 
    public final BotConfig config;
 
@@ -49,9 +64,12 @@ public class BotService extends TelegramLongPollingBot {
 
    private String expectedBirthday = null;
 
-   public BotService(BotConfig config, UserService userService) throws TelegramApiException {
+   public BotService(BotConfig config,
+                     Storage storage,
+                     UserService userService) throws TelegramApiException {
       this.config = config;
       this.userService = userService;
+      this.storage = storage;
 
       CompletableFuture.runAsync(() -> {
          try {
@@ -82,10 +100,11 @@ public class BotService extends TelegramLongPollingBot {
       BotService.environment = environment;
    }
 
-   // ====  START ======================================================================================================
+   // ====  MAIN START  ================================================================================================
    @Override
    public void onUpdateReceived(Update update) {
       Firestore dbFirestore = FirestoreClient.getFirestore();
+
 
       try {
          // ====  SEND MESSAGE  ========================================================================================
@@ -149,6 +168,7 @@ public class BotService extends TelegramLongPollingBot {
                   case "/photo" -> {
                      currentMode = "/photo";
                      sendMessage(chatId, "Добавь своё фото. Нажми на \uD83D\uDCCE");
+                     sendImage(chatId);
                   }
                   default -> {
                      if ("/assistant".equals(currentMode)) {
@@ -218,9 +238,53 @@ public class BotService extends TelegramLongPollingBot {
             });
          }
       } catch (ExecutionException | InterruptedException | TelegramApiException ignored) {
+      } catch (IOException e) {
+         throw new RuntimeException(e);
       }
    }
-   // =====  END  ======================================================================================================
+   // =====  MAIN END  =================================================================================================
+
+   public void sendImage(Long chatId) throws IOException {
+      String bucketName = "umatch-ef0db.appspot.com";
+      String blobName = "photos/jackie-chan.jpg";
+
+      String pathToServiceAccountKey = "path/to/serviceAccountKey.json";
+
+      // ==== TELEGRAM BOT LOADER
+      ClassLoader classLoader = BotService.class.getClassLoader();
+
+      File fileBucket = new File(Objects.requireNonNull(classLoader.getResource(pathToServiceAccountKey)).getFile());
+      FileInputStream serviceAccountBucket =
+              new FileInputStream(fileBucket.getAbsoluteFile());
+
+      // Создаем объект Storage с указанием ID проекта
+//      Storage storage = StorageOptions.newBuilder()
+//              .setProjectId("umatch-ef0db")
+//              .setCredentials(GoogleCredentials.fromStream(serviceAccountBucket))
+//              .build().getService();
+
+      // Получение URL-адреса изображения
+      Blob blob = storage.get(bucketName, blobName);
+
+      storage.list().iterateAll().forEach(bucketExpected -> System.out.println(bucketExpected.getName()));
+
+
+      String url = blob.getMediaLink();
+
+//      String url = signedUrl.toString();
+
+      // Загрузка изображения
+      try (InputStream inputStream = new URL(url).openStream()) {
+         InputFile inputFile = new InputFile(inputStream, "jackie-chan.jpg");
+         SendPhoto sendPhoto = new SendPhoto();
+         sendPhoto.setChatId(chatId);
+         sendPhoto.setPhoto(inputFile);
+
+         execute(sendPhoto);
+      } catch (TelegramApiException e) {
+         throw new RuntimeException(e);
+      }
+   }
 
    // GET ANSWER FROM ChatGPT
    public String askGpt(String text) {

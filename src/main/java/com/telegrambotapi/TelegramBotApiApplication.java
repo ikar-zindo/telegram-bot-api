@@ -21,29 +21,47 @@ import java.util.concurrent.Executor;
 @SpringBootApplication
 public class TelegramBotApiApplication {
 
+//   private static Storage storage;
+
    public static void main(String[] args) throws IOException {
-      // ====  TELEGRAM BOT LOADER
+      String pathToServiceAccountKey = "path/to/serviceAccountKey.json";
+
+      // ==== TELEGRAM BOT LOADER
       ClassLoader classLoader = TelegramBotApiApplication.class.getClassLoader();
 
-      // ==== CONNECT TO FIREBASE
-      File file = new File(Objects.requireNonNull(classLoader.getResource("path/to/serviceAccountKey.json")).getFile());
+      // ==== STREAM CONNECT TO FIREBASE
+      File file = new File(Objects.requireNonNull(classLoader.getResource(pathToServiceAccountKey)).getFile());
       FileInputStream serviceAccount =
               new FileInputStream(file.getAbsoluteFile());
 
+      // ==== CONNECT TO FIREBASE
       FirebaseOptions options = new FirebaseOptions.Builder()
               .setCredentials(GoogleCredentials.fromStream(serviceAccount))
               .setDatabaseUrl("https://umatch-ef0db-default-rtdb.europe-west1.firebasedatabase.app/")
               .setStorageBucket("umatch-ef0db.appspot.com")
               .build();
 
-//      FirebaseOptions options = new FirebaseOptions.Builder()
-//              .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-//              .build();
+      // ==== STREAM CONNECT TO STORAGE
+//      File fileBucket = new File(Objects.requireNonNull(classLoader.getResource(pathToServiceAccountKey)).getFile());
+//      FileInputStream serviceAccountBucket =
+//              new FileInputStream(fileBucket.getAbsoluteFile());
 
+      // ==== CONNECT TO STORAGE
+//      Storage storage = StorageOptions.newBuilder()
+//              .setProjectId("umatch-ef0db")
+//              .setCredentials(GoogleCredentials.fromStream(serviceAccountBucket))
+//              .build().getService();
+
+      // ==== FIREBASE INITIALIZE
       FirebaseApp.initializeApp(options);
 
+      // GET BUCKETS LIST
+//      storage.list().iterateAll().forEach(bucketExpected -> System.out.println(bucketExpected.getName()));
+
+      // ==== START APPLICATION
       SpringApplication.run(TelegramBotApiApplication.class, args);
    }
+
 
    @Bean
    public Executor taskExecutor() {
